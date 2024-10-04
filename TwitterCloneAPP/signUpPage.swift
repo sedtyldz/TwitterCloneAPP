@@ -3,6 +3,7 @@ import FirebaseAuth
 
 struct SignUpView: View {
     @State private var firstName = ""
+    @State private var deneme = ""
     @State private var lastName = ""
     @State private var username = ""
     @State private var email = ""
@@ -40,6 +41,14 @@ struct SignUpView: View {
             
             // E-posta Alanı
             TextField("Email", text: $email)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+                .shadow(radius: 2)
+                .autocapitalization(.none)
+            
+            
+            TextField("deneme", text: $deneme)
                 .padding()
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(12)
