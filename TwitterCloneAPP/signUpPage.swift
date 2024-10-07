@@ -2,7 +2,10 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
-struct SignUpView: View {
+struct SignUpPage: View {
+    
+    // variables
+    
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var username = ""
@@ -11,7 +14,8 @@ struct SignUpView: View {
     @State private var errorMessage = ""
     @State private var isRegistered = false
     @State private var durum : Bool = false
-
+    @State private var kayitli : Bool = false
+    
     var body: some View {
         
         NavigationStack {
@@ -64,7 +68,8 @@ struct SignUpView: View {
                 HStack(spacing: 20) {
                     // Kayıt Butonu
                     Button(action: {
-                        signUp()
+                        kayit(email: email, password: password, firstName: firstName, lastName: lastName, username: username)
+                        
                     }) {
                         Text("Sign Up")
                             .foregroundColor(.white)
@@ -78,12 +83,7 @@ struct SignUpView: View {
                     
                     // Giriş Butonu
                     Button(action: {
-                        
-                        if check(email: email, password: password) == "basarili" {
-                            
-                            durum = true
-
-                        }
+                        self.kayitli = true
                         
                     }) {
                         Text("Sign In")
@@ -114,8 +114,12 @@ struct SignUpView: View {
                 
                 Spacer()
             }
-            .navigationDestination(isPresented: $durum) {
+            .navigationBarBackButtonHidden(true)
+            .navigationDestination(isPresented: $kayitli) {
                 signInPage()
+            }
+            .navigationDestination(isPresented: $durum) {
+                mainPage()
             }
             .padding(.horizontal, 30)
             .background(
@@ -125,83 +129,118 @@ struct SignUpView: View {
             )
         }
     }
+    
+    
+    // functions
+    
+    /*
+     Task:
+     
+     1-Check the informations for if its valid or nah
+     2-Save users information for FirebaseAuth
+     3-Store the data to the Firestore
+     
+     
+     
+     */
+    
+    
+    
+    
+    func check(email:String,password:String,firstName:String,lastName:String,username:String) ->String {
+        
+        if firstName.isEmpty {
+            return "Lütfen ad giriniz."
+        }
+        if lastName.isEmpty{
+            return "Lütfen soyad giriniz"
+        }
+        if username.isEmpty{
+            return "Lütfen kullanıcı adı giriniz"
+        }
+        if email.isEmpty {
+            return "Lütfen email giriniz."
+        }
         
         
-        // Kullanıcı Kayıt Fonksiyonu
-        func signUp() {
-            if let error = check(email: email, password: password)  {
-                
-                if error == "basarili" {
-                    
-                    self.errorMessage = ""
-                    
-                }
-                self.errorMessage = error
+        if !email.contains("@") || !email.contains(".") {
+            return "Invalid email format."
+        }
+        if password.isEmpty {
+            return "Lütfen şifre giriniz."
+        }
+        
+        if password.count < 6 {
+            return "Password must be at least 6 characters."
+        }
+        
+        return "success"
+        
+    }
+    
+    
+    func saveUserInfo(uid: String,email:String,password:String,firstName:String,lastName:String,username:String){
+        let db = Firestore.firestore()
+        db.collection("users").document(uid).setData([
+            "firstName": firstName,
+            "lastName": lastName,
+            "username": username,
+            "email": email,
+            "uid": uid
+        ]) { error in
+            if let error = error {
+                self.errorMessage = "Error saving user data: \(error.localizedDescription)"
+            } else {
+                print("User data saved successfully.")
+            }
+        }
+        
+    }
+    
+    
+    
+    
+    // use this function after we check the valid inputs
+    func signUp(email:String,password:String,firstName:String,lastName:String,username:String){
+        
+        Auth.auth().createUser(withEmail: email, password: password) { authResult, error in
+            if let error = error {
+                self.errorMessage = "Error: \(error.localizedDescription)"
+                return
+            }
+            guard let user = authResult?.user else {
+                self.errorMessage = "User creation failed."
                 return
             }
             
-            // Firebase Auth üzerinden kullanıcı oluşturma
-            Auth.auth().createUser(withEmail: email, password: password) { authResult, error in
-                if let error = error {
-                    self.errorMessage = "Error: \(error.localizedDescription)"
-                    return
-                }
-                
-                
-                guard let user = authResult?.user else {
-                    self.errorMessage = "User creation failed."
-                    return
-                }
-                
-                self.isRegistered = true
-                saveUserData(uid: user.uid, firstName: firstName, lastName: lastName, username: username, email: email)
-            }
+            saveUserInfo(uid:user.uid, email: email, password: password, firstName: firstName, lastName: lastName, username: username)
+            
         }
         
-        func saveUserData(uid: String, firstName: String, lastName: String, username: String, email: String) {
-            let db = Firestore.firestore()
-            db.collection("users").document(uid).setData([
-                "firstName": firstName,
-                "lastName": lastName,
-                "username": username,
-                "email": email,
-                "uid": uid
-            ]) { error in
-                if let error = error {
-                    self.errorMessage = "Error saving user data: \(error.localizedDescription)"
-                } else {
-                    print("User data saved successfully.")
-                }
-            }
-        }
         
-        func check(email: String, password: String) -> String? {
-            
-            if username.isEmpty {
-                return "Username field is required."
-            }
-            
-            if email.isEmpty {
-                return "Email field is required."
-            }
-            
-            if password.isEmpty {
-                return "Password field is required."
-            }
-            
-            if !email.contains("@") || !email.contains(".") {
-                return "Invalid email format."
-            }
-            
-            if password.count < 6 {
-                return "Password must be at least 6 characters."
-            }
-            
-            return "basarili"
+    }
+    
+    // final function to use all the functions
+    func kayit(email:String,password:String,firstName:String,lastName:String,username:String){
+        let sonuc = check(email: email, password: password, firstName: firstName, lastName: lastName, username: username)
+        if sonuc == "success" {
+            signUp(email: email, password: password, firstName: firstName, lastName: lastName, username: username)
+            self.isRegistered = true
+            self.durum  = true
         }
+        else{
+            self.errorMessage = sonuc
+        }
+            
+        
+        
+        
     }
 
+        
+}
+
 #Preview {
-    SignUpView()
+    SignUpPage()
 }
 

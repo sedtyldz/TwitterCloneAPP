@@ -10,9 +10,10 @@ struct mainPage: View {
             Text("Hello, world!")
         }
         .padding()
+        .navigationBarBackButtonHidden(true)
     }
 }
 
 #Preview {
-    SignUpView()
+    mainPage()
 }
